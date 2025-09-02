@@ -62,8 +62,7 @@ Built with **HTML, CSS, JavaScript**, and **Leaflet.js** for interactive maps.
 
 ## Demo
 
-- Demo screenshots and presentation slides included in the repository.
-- Interactive map and booking flow are functional in a modern browser.
+- Demo link is here https://david-tonje.github.io/vibecodinghackathon/
 
 ---
 
