@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Symptom Checker · Siaya County (SDG 3)</title>
+  <!-- Add this inside <head> -->
+    <script src="https://unpkg.com/intasend-inlinejs-sdk@4.0.5/build/intasend-inline.js"></script>
+    <script src="https://checkout.intasend.com/js/intasend-checkout.js"></script>
+    <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <style>
+    /* ---------- Base & Layout ---------- */
+    :root{
+      --brand:#0d6efd;
+      --brand-dark:#0a58ca;
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#222;
+      --muted:#667085;
+      --success:#15803d;
+      --danger:#b91c1c;
+      --radius:14px;
+      --shadow:0 6px 18px rgba(16,24,40,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+      color:var(--text);
+      background:var(--bg);
+      line-height:1.5;
+    }
+
+    header{
+      background:linear-gradient(135deg,var(--brand),#16a34a);
+      color:#fff;
+      padding:1.25rem 1rem;
+      text-align:center;
+    }
+    header h1{margin:.25rem 0 0;font-size:1.6rem;font-weight:800;letter-spacing:.2px}
+    header p{margin:.25rem 0 0;opacity:.95}
+
+    .wrap{max-width:1200px;margin:0 auto;padding:1rem;display:grid;gap:1rem}
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:1rem;
+    }
+    @media (max-width: 900px){ .grid{ grid-template-columns:1fr } }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:1rem clamp(1rem,1.5vw,1.25rem);
+    }
+    .card h2{margin:0 0 .5rem;font-size:1.15rem}
+    .sub{color:var(--muted);font-size:.95rem;margin-top:.25rem}
+
+    /* ---------- Controls ---------- */
+    textarea,input,select{
+      width:100%;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      padding:.75rem .8rem;
+      font:inherit;
+      outline:none;
+      transition:border .15s ease, box-shadow .15s ease;
+      background:#fff;
+    }
+    textarea{min-height:120px;resize:vertical}
+    textarea:focus,input:focus,select:focus{
+      border-color:var(--brand);
+      box-shadow:0 0 0 4px rgba(13,110,253,.12);
+    }
+
+    .row{display:grid;gap:.75rem;grid-template-columns:1fr 1fr}
+    @media (max-width:700px){ .row{ grid-template-columns:1fr } }
+
+    .btn{
+      appearance:none;
+      border:0;
+      border-radius:12px;
+      padding:.8rem 1rem;
+      font-weight:700;
+      cursor:pointer;
+      background:var(--brand);
+      color:#fff;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:.5rem;
+      transition:transform .05s ease, background .2s ease, box-shadow .2s ease;
+      box-shadow:0 8px 18px rgba(13,110,253,.25);
+    }
+    .btn:active{ transform:translateY(1px) }
+    .btn:hover{ background:var(--brand-dark) }
+    .btn-outline{
+      background:#fff;color:var(--brand);
+      border:2px solid var(--brand);
+      box-shadow:none;
+    }
+
+    /* ---------- Map ---------- */
+    #map{width:100%;height:380px;border-radius:12px;overflow:hidden}
+
+    /* ---------- Output ---------- */
+    .pill{
+      display:inline-flex;align-items:center;gap:.5rem;
+      font-weight:700;font-size:.9rem;
+      padding:.35rem .6rem;border-radius:999px
+    }
+    .pill.success{ background:#ecfdf5;color:var(--success) }
+    .pill.warn{ background:#fff1f2;color:var(--danger) }
+
+    .result{
+      background:#f8fafc;border:1px solid #e5e7eb;
+      border-radius:12px;padding:.85rem;margin-top:.75rem;
+      white-space:pre-wrap
+    }
+
+    .foot{
+      margin-top:.75rem;font-size:.9rem;color:var(--muted)
+    }
+    footer{
+      text-align:center;color:#94a3b8;font-size:.9rem;padding:1.25rem
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI Symptom Checker & Health Access — Siaya County</h1>
+    <p>Supporting SDG 3: Good Health & Well-being • Built with HTML/CSS/JS + Leaflet</p>
+  </header>
+
+  <main class="wrap">
+    <!-- Symptom checker + Map -->
+    <section class="grid">
+      <div class="card">
+        <h2>Check Your Symptoms</h2>
+        <p class="sub">Get quick AI-style guidance and next steps. (Demo logic; not a medical diagnosis.)</p>
+
+        <label for="symptoms" class="sub" style="display:block;margin-top:.5rem">Describe your symptoms</label>
+        <textarea id="symptoms" placeholder="e.g., fever, headache, sore throat for 2 days, mild cough, no chest pain"></textarea>
+
+        <div class="row" style="margin-top:.75rem">
+          <button class="btn" id="analyzeBtn">Analyze Symptoms</button>
+          <button class="btn btn-outline" id="clearBtn">Clear</button>
+        </div>
+
+        <div id="pillHolder" style="margin-top:.75rem"></div>
+        <div id="result" class="result" style="display:none"></div>
+        <p class="foot">⚠️ This tool does not provide a medical diagnosis. If symptoms are severe or persist, seek professional care immediately.</p>
+      </div>
+
+      <div class="card">
+        <h2>Nearby Facilities (Siaya County)</h2>
+        <p class="sub">Auto-centers to your location if allowed; otherwise starts at Siaya Town.</p>
+        <div id="map"></div>
+      </div>
+    </section>
+
+    <!-- Booking / Payment demo -->
+    <section class="card">
+      <h2>Book a Consultation</h2>
+      <p class="sub">Reserve a time with a clinician. (Demo flow; integrate Flutterwave/Paystack next.)</p>
+
+      <div class="row" style="margin-top:.5rem">
+        <input id="name" placeholder="Full name" />
+        <input id="phone" placeholder="Phone (e.g., 07xx…)" />
+      </div>
+      <div class="row" style="margin-top:.5rem">
+        <input id="email" type="email" placeholder="Email address" />
+        <input id="date" type="datetime-local" />
+      </div>
+      <div class="row" style="margin-top:.5rem">
+        <select id="facility">
+          <option value="">Select preferred facility</option>
+          <option>Siaya County Referral Hospital</option>
+          <option>Bondo Sub-County Hospital</option>
+          <option>Yala Sub-County Hospital</option>
+          <option>Ugunja Sub-County Hospital</option>
+          <option>Any trusted pharmacy</option>
+        </select>
+        <select id="service">
+          <option value="">Select service</option>
+          <option value="1000">General consultation – KES 1000</option>
+          <option value="500">Tele-consult (chat) – KES 500</option>
+          <option value="800">Tele-consult (video) – KES 800</option>
+        </select>
+      </div>
+
+      <div class="row" style="margin-top:.75rem">
+        <button class="btn" id="bookBtn">Confirm & Pay (Demo)</button>
+        <button class="btn btn-outline" id="resetBooking">Reset</button>
+      </div>
+
+      <div id="bookMsg" class="result" style="display:none;margin-top:.75rem"></div>
+      <button class="intaSendPayButton" data-amount="1000" data-currency="KES">Pay Now</button>
+      <p class="foot">💳 Thank you for Believing in us and Our System</p>
+    </section>
+    
+  </main>
+
+  <footer>© 2025 Vibe Coding Hackathon • Built for #1MillionDevs4Africa</footer>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+    
+      /* ===== MAP ===== */
+      const SIAYA_CENTER = [0.0611, 34.2881]; 
+      const clinics = [
+        { name: "Siaya County Referral Hospital", coords: [0.0619, 34.2879], phone: "0700 000 001", type: "Hospital" },
+        { name: "Bondo Sub-County Hospital", coords: [0.2356, 34.2771], phone: "0700 000 002", type: "Hospital" },
+        { name: "Yala Sub-County Hospital", coords: [0.0976, 34.5553], phone: "0700 000 003", type: "Hospital" },
+        { name: "Ugunja Sub-County Hospital", coords: [0.1973, 34.3024], phone: "0700 000 004", type: "Hospital" },
+        { name: "Siaya Town Pharmacy", coords: [0.0627, 34.2889], phone: "0700 000 101", type: "Pharmacy" },
+        { name: "Bondo Central Pharmacy", coords: [0.2335, 34.2741], phone: "0700 000 102", type: "Pharmacy" }
+      ];
+    
+      const map = L.map("map", { scrollWheelZoom: true }).setView(SIAYA_CENTER, 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+      
+      clinics.forEach(c => {
+        L.marker(c.coords).addTo(map).bindPopup(`<b>${c.name}</b><br/>Type: ${c.type}<br/>Phone: ${c.phone}`);
+      });
+    
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => {
+            const you = [coords.latitude, coords.longitude];
+            map.setView(you, 13);
+            L.circleMarker(you, { radius: 7, color: "#0d6efd" }).addTo(map).bindPopup("You are here").openPopup();
+          },
+          () => {},
+          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+        );
+      }
+    
+      /* ===== Symptom Checker ===== */
+      const analyzeBtn = document.getElementById("analyzeBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const symptomsEl = document.getElementById("symptoms");
+      const resultEl = document.getElementById("result");
+      const pillHolder = document.getElementById("pillHolder");
+    
+      const rules = [
+        { match:/\b(fever|high temperature|temperature)\b/i, tag:"Possible fever", advice:"Hydrate well, rest." },
+        { match:/\b(cough|sore throat|throat|sneez|flu|cold)\b/i, tag:"Respiratory", advice:"Rest, fluids." },
+        { match:/\b(headache|migraine|dizzy|dizziness)\b/i, tag:"Headache/dizziness", advice:"Hydrate and rest." },
+        { match:/\b(chest pain|shortness of breath|breathless|difficulty breathing)\b/i, tag:"Urgent", advice:"Seek medical attention!", urgent:true }
+      ];
+    
+      function analyze() {
+        const text = symptomsEl.value.trim();
+        if (!text) { resultEl.style.display="block"; resultEl.textContent="⚠️ Enter symptoms."; pillHolder.innerHTML=""; return; }
+    
+        const hits = rules.filter(r => r.match.test(text));
+        pillHolder.innerHTML = hits.length
+          ? hits.map(h => `<span class="pill ${h.urgent?'warn':'success'}">• ${h.tag}</span>`).join(" ")
+          : `<span class="pill success">• General check</span>`;
+    
+        const adviceLines = hits.map(h=>`• ${h.tag}: ${h.advice}`);
+        if(!hits.length) adviceLines.push("• Stay hydrated. Seek care if persists.");
+    
+        resultEl.style.display = "block";
+        resultEl.textContent = `✅ Guidance:\n${adviceLines.join("\n")}`;
+      }
+    
+      analyzeBtn.addEventListener("click", analyze);
+      clearBtn.addEventListener("click", ()=>{ symptomsEl.value=""; resultEl.style.display="none"; pillHolder.innerHTML=""; });
+    
+      /* ===== Booking & IntaSend ===== */
+      const bookBtn = document.getElementById("bookBtn");
+      const resetBooking = document.getElementById("resetBooking");
+      const bookMsg = document.getElementById("bookMsg");
+    
+      function getVal(id){ return document.getElementById(id).value.trim(); }
+    
+      bookBtn.addEventListener("click", ()=>{
+        const name=getVal("name"), phone=getVal("phone"), email=getVal("email"),
+              date=getVal("date"), facility=getVal("facility"), service=getVal("service");
+    
+        if(!name||!phone||!email||!date||!facility||!service){
+          bookMsg.style.display="block"; bookMsg.textContent="❌ Fill all fields."; return;
+        }
+    
+        let amount=0;
+        if(service.includes("1000")) amount=1000;
+        if(service.includes("500")) amount=500;
+        if(service.includes("800")) amount=800;
+    
+        const ref="SB"+Math.random().toString(36).slice(2,8).toUpperCase();
+    
+        bookMsg.style.display="block";
+        bookMsg.textContent=`Booking confirmed. Proceeding to payment KES ${amount}…`;
+    
+        new window.IntaSend({
+          publicAPIKey: "ISPubKey_test_92848f14-4028-430b-9f7e-00d33c5a699c",
+          live:false,
+          paymentData:{
+            amount:amount,
+            currency:"KES",
+            fullName:name,
+            email:email,
+            phoneNumber:phone,
+            txRef:ref,
+            description:`${service} at ${facility} on ${new Date(date).toLocaleString()}`
+          }
+        }).on("COMPLETE",(res)=>{ alert("✅ Payment success!"); bookMsg.textContent=`Payment successful Ref: ${res.txRef}`; })
+          .on("FAILED",(res)=>{ alert("❌ Payment failed"); bookMsg.textContent="Payment failed, try again."; })
+          .setup();
+      });
+    
+      resetBooking.addEventListener("click", ()=>{
+        ["name","phone","email","date","facility","service"].forEach(id=>document.getElementById(id).value="");
+        bookMsg.style.display="none"; bookMsg.textContent="";
+      });
+    
+    });
+    </script>
+    
+ 
+</body>
+</html>
